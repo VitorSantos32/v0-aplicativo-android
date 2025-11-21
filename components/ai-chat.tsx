@@ -13,7 +13,7 @@ interface AiChatProps {
 export function AiChat({ onClose }: AiChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, setInput } = useChat({
     api: "/api/ai-coach/chat",
   })
 
@@ -25,18 +25,16 @@ export function AiChat({ onClose }: AiChatProps) {
     scrollToBottom()
   }, [messages])
 
-  const handleSuggestion = (suggestion: string) => {
-    const syntheticEvent = {
-      preventDefault: () => {},
-      target: { value: suggestion },
-    } as any
-    handleInputChange(syntheticEvent)
-    setTimeout(() => {
+  const handleSuggestion = async (suggestion: string) => {
+    setInput(suggestion)
+
+    // Aguarda um frame para garantir que o input foi atualizado
+    requestAnimationFrame(() => {
       const form = document.querySelector("form")
       if (form) {
         form.requestSubmit()
       }
-    }, 100)
+    })
   }
 
   return (

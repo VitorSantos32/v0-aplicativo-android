@@ -3,13 +3,18 @@ import { streamText } from "ai"
 export const maxDuration = 30
 
 export async function POST(req: Request) {
-  const { messages } = await req.json()
+  try {
+    const { messages } = await req.json()
 
-  console.log("[v0] Recebendo mensagens:", messages.length)
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return new Response("Mensagens inválidas", { status: 400 })
+    }
 
-  const result = streamText({
-    model: "openai/gpt-4o-mini",
-    system: `Você é um Personal Trainer experiente e especialista da Academia Mais Vida, com anos de experiência em musculação, CrossFit e fitness.
+    console.log("[v0] Recebendo mensagens:", messages.length)
+
+    const result = streamText({
+      model: "openai/gpt-4o-mini",
+      system: `Você é um Personal Trainer experiente e especialista da Academia Mais Vida, com anos de experiência em musculação, CrossFit e fitness.
 
 SEU PAPEL:
 - Responder dúvidas sobre exercícios, técnicas e treinos de academia
@@ -37,8 +42,12 @@ IMPORTANTE:
 - Foque apenas em dúvidas relacionadas a academia, treino e exercícios físicos
 - Se perguntarem sobre nutrição detalhada, recomende o Calculador Nutricional do app
 - Não dê diagnósticos médicos, sempre recomende consultar profissionais de saúde quando apropriado`,
-    messages,
-  })
+      messages,
+    })
 
-  return result.toUIMessageStreamResponse()
+    return result.toUIMessageStreamResponse()
+  } catch (error) {
+    console.error("[v0] Erro no chat IA:", error)
+    return new Response("Erro ao processar mensagem", { status: 500 })
+  }
 }
