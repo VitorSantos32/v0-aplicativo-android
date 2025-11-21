@@ -2,227 +2,153 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useChat } from "@ai-sdk/react"
+import { DefaultChatTransport } from "ai"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Send, Loader2, Activity, TrendingUp, TrendingDown } from "lucide-react"
-import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport } from "ai"
-import { Label } from "@/components/ui/label"
+import { Send, Bot, User, Loader2 } from "lucide-react"
 
-export function AIChat() {
-  const [weight, setWeight] = useState("")
-  const [height, setHeight] = useState("")
-  const [bodyFat, setBodyFat] = useState("")
-  const [goal, setGoal] = useState<"lose" | "gain" | "maintain" | null>(null)
-  const [showForm, setShowForm] = useState(true)
+interface AiChatProps {
+  onClose?: () => void
+}
+
+export function AiChat({ onClose }: AiChatProps) {
+  const [input, setInput] = useState("")
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/ai-coach" }),
+    transport: new DefaultChatTransport({
+      api: "/api/ai-coach/chat",
+    }),
   })
 
-  const handleStartChat = () => {
-    if (!weight || !height || !goal) return
-
-    const goalText =
-      goal === "lose" ? "perder gordura" : goal === "gain" ? "ganhar massa muscular" : "manter o corpo atual"
-    const prompt = `Olá! Sou um usuário da academia Mais Vida. Meus dados são:
-    - Peso: ${weight}kg
-    - Altura: ${height}cm
-    ${bodyFat ? `- Percentual de gordura: ${bodyFat}%` : ""}
-    - Objetivo: ${goalText}
-    
-    Por favor, crie um plano de dieta personalizado para mim com orientações específicas e dicas.`
-
-    sendMessage({ text: prompt })
-    setShowForm(false)
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  const handleNewMessage = (e: React.FormEvent) => {
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const input = (e.target as any).message.value
-    if (!input.trim()) return
+    if (!input.trim() || status === "in_progress") return
 
     sendMessage({ text: input })
-    ;(e.target as any).message.value = ""
+    setInput("")
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {showForm ? (
-        <div className="p-4 flex-1 overflow-y-auto">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-white mb-2">Bem-vindo ao Coach IA</h2>
-            <p className="text-gray-400 text-sm">Preencha seus dados para receber um plano personalizado</p>
-          </div>
-
-          <Card className="bg-zinc-900 border-zinc-800 mb-6">
-            <CardContent className="p-6 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="weight" className="text-white">
-                  Peso (kg)
-                </Label>
-                <Input
-                  id="weight"
-                  type="number"
-                  placeholder="Ex: 75"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  className="bg-zinc-800 border-zinc-700 text-white"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="height" className="text-white">
-                  Altura (cm)
-                </Label>
-                <Input
-                  id="height"
-                  type="number"
-                  placeholder="Ex: 175"
-                  value={height}
-                  onChange={(e) => setHeight(e.target.value)}
-                  className="bg-zinc-800 border-zinc-700 text-white"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bodyFat" className="text-white">
-                  Percentual de Gordura (%) - Opcional
-                </Label>
-                <Input
-                  id="bodyFat"
-                  type="number"
-                  placeholder="Ex: 20"
-                  value={bodyFat}
-                  onChange={(e) => setBodyFat(e.target.value)}
-                  className="bg-zinc-800 border-zinc-700 text-white"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-3 mb-6">
-            <p className="text-white font-semibold">Qual é seu objetivo?</p>
-            <div className="grid grid-cols-1 gap-3">
+    <div className="flex flex-col h-full bg-black">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            <div className="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center mb-4">
+              <Bot className="w-8 h-8 text-orange-500" />
+            </div>
+            <h3 className="text-white font-bold text-lg mb-2">Como posso te ajudar?</h3>
+            <p className="text-gray-400 text-sm mb-6">
+              Pergunte sobre treinos, exercícios, técnicas ou tire dúvidas sobre sua rotina
+            </p>
+            <div className="grid grid-cols-1 gap-2 w-full max-w-sm">
               <Button
-                onClick={() => setGoal("lose")}
-                variant={goal === "lose" ? "default" : "outline"}
-                className={`h-auto py-4 justify-start ${
-                  goal === "lose"
-                    ? "bg-orange-500 hover:bg-orange-600 text-white border-orange-500"
-                    : "bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800"
-                }`}
+                variant="outline"
+                className="bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 text-left justify-start"
+                onClick={() => {
+                  setInput("Como fazer agachamento correto?")
+                }}
               >
-                <TrendingDown className="w-5 h-5 mr-3" />
-                <div className="text-left">
-                  <div className="font-semibold">Perder Gordura</div>
-                  <div className="text-xs opacity-80">Definição e emagrecimento</div>
-                </div>
+                Como fazer agachamento correto?
               </Button>
-
               <Button
-                onClick={() => setGoal("gain")}
-                variant={goal === "gain" ? "default" : "outline"}
-                className={`h-auto py-4 justify-start ${
-                  goal === "gain"
-                    ? "bg-orange-500 hover:bg-orange-600 text-white border-orange-500"
-                    : "bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800"
-                }`}
+                variant="outline"
+                className="bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 text-left justify-start"
+                onClick={() => {
+                  setInput("Preciso de motivação para treinar hoje")
+                }}
               >
-                <TrendingUp className="w-5 h-5 mr-3" />
-                <div className="text-left">
-                  <div className="font-semibold">Ganhar Massa Muscular</div>
-                  <div className="text-xs opacity-80">Hipertrofia e volume</div>
-                </div>
+                Preciso de motivação para treinar hoje
               </Button>
-
               <Button
-                onClick={() => setGoal("maintain")}
-                variant={goal === "maintain" ? "default" : "outline"}
-                className={`h-auto py-4 justify-start ${
-                  goal === "maintain"
-                    ? "bg-orange-500 hover:bg-orange-600 text-white border-orange-500"
-                    : "bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800"
-                }`}
+                variant="outline"
+                className="bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 text-left justify-start"
+                onClick={() => {
+                  setInput("Monte um treino de peito e tríceps")
+                }}
               >
-                <Activity className="w-5 h-5 mr-3" />
-                <div className="text-left">
-                  <div className="font-semibold">Manter Forma Atual</div>
-                  <div className="text-xs opacity-80">Equilíbrio e manutenção</div>
-                </div>
+                Monte um treino de peito e tríceps
               </Button>
             </div>
           </div>
-
-          <Button
-            onClick={handleStartChat}
-            disabled={!weight || !height || !goal}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold"
-          >
-            Gerar Plano Personalizado
-          </Button>
-        </div>
-      ) : (
-        <>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        ) : (
+          <>
             {messages.map((message) => (
-              <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                    message.role === "user"
-                      ? "bg-orange-500 text-white"
-                      : "bg-zinc-900 text-white border border-zinc-800"
+              <div key={message.id} className={`flex gap-3 ${message.role === "user" ? "justify-end" : ""}`}>
+                {message.role === "assistant" && (
+                  <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
+                    <Bot className="w-5 h-5 text-white" />
+                  </div>
+                )}
+                <Card
+                  className={`max-w-[80%] ${
+                    message.role === "user" ? "bg-orange-500 border-orange-500" : "bg-zinc-900 border-zinc-800"
                   }`}
                 >
-                  {message.parts.map((part, index) => {
-                    if (part.type === "text") {
-                      return (
-                        <p key={index} className="text-sm whitespace-pre-wrap leading-relaxed">
-                          {part.text}
-                        </p>
-                      )
-                    }
-                    return null
-                  })}
-                </div>
+                  <CardContent className="p-3">
+                    <div className="text-white text-sm whitespace-pre-wrap">
+                      {message.parts.map((part, index) => {
+                        if (part.type === "text") {
+                          return <span key={index}>{part.text}</span>
+                        }
+                        return null
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+                {message.role === "user" && (
+                  <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center shrink-0">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                )}
               </div>
             ))}
-
             {status === "in_progress" && (
-              <div className="flex justify-start">
-                <div className="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3 flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
-                  <span className="text-sm text-gray-400">Coach IA está pensando...</span>
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
+                  <Bot className="w-5 h-5 text-white" />
                 </div>
+                <Card className="bg-zinc-900 border-zinc-800">
+                  <CardContent className="p-3">
+                    <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                  </CardContent>
+                </Card>
               </div>
             )}
-          </div>
+            <div ref={messagesEndRef} />
+          </>
+        )}
+      </div>
 
-          <div className="p-4 bg-zinc-900 border-t border-zinc-800">
-            <form onSubmit={handleNewMessage} className="flex gap-2">
-              <Input
-                name="message"
-                placeholder="Faça uma pergunta..."
-                className="bg-zinc-800 border-zinc-700 text-white placeholder:text-gray-500"
-                disabled={status === "in_progress"}
-              />
-              <Button
-                type="submit"
-                size="icon"
-                className="bg-orange-500 hover:bg-orange-600 shrink-0"
-                disabled={status === "in_progress"}
-              >
-                <Send className="w-5 h-5" />
-              </Button>
-            </form>
-            <p className="text-xs text-gray-500 mt-2 text-center">
-              Coach IA fornece orientações gerais. Consulte um nutricionista para planos personalizados.
-            </p>
-          </div>
-        </>
-      )}
+      <div className="p-4 border-t border-zinc-800">
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Digite sua pergunta..."
+            disabled={status === "in_progress"}
+            className="flex-1 bg-zinc-900 border-zinc-700 text-white placeholder:text-gray-500"
+          />
+          <Button
+            type="submit"
+            disabled={!input.trim() || status === "in_progress"}
+            className="bg-orange-500 hover:bg-orange-600 shrink-0"
+          >
+            {status === "in_progress" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </Button>
+        </form>
+      </div>
     </div>
   )
 }
