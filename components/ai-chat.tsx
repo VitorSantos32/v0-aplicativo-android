@@ -128,7 +128,7 @@ export function AiChat({ onClose }: AiChatProps) {
           />
           <Button
             type="submit"
-            disabled={!input.trim() || isLoading}
+            disabled={!input || input.trim() === "" || isLoading}
             className="bg-orange-500 hover:bg-orange-600 shrink-0"
           >
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
