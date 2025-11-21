@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, PlusSquare, MessageSquare, User, Search } from "lucide-react"
+import { Home, PlusSquare, Bot, User, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function BottomNav() {
@@ -12,7 +12,7 @@ export function BottomNav() {
     { href: "/feed", icon: Home, label: "Feed" },
     { href: "/create", icon: PlusSquare, label: "Postar" },
     { href: "/search", icon: Search, label: "Pesquisar" },
-    { href: "/ai-coach", icon: MessageSquare, label: "IA Coach" },
+    { href: "/ai-coach", icon: Bot, label: "Coach IA" },
     { href: "/profile", icon: User, label: "Perfil" },
   ]
 
@@ -20,7 +20,7 @@ export function BottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-zinc-900 border-t border-zinc-800">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-4">
         {links.map((link) => {
-          const isActive = pathname === link.href
+          const isActive = pathname === link.href || pathname.startsWith(link.href)
           const Icon = link.icon
 
           return (

@@ -1,18 +1,21 @@
-import { createServerClient as createSupabaseServerClient } from "@supabase/ssr"
+import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 
 export async function createClient() {
-  const cookieStore = await cookies()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  const supabaseUrl = process.env.SUPABASE_URL || ""
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || ""
+  console.log("[v0] Supabase Server - URL exists:", !!supabaseUrl)
+  console.log("[v0] Supabase Server - Key exists:", !!supabaseAnonKey)
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("[v0] Missing Supabase server environment variables")
+    console.error("[v0] Missing Supabase credentials in server.ts")
     throw new Error("Missing Supabase environment variables")
   }
 
-  return createSupabaseServerClient(supabaseUrl, supabaseAnonKey, {
+  const cookieStore = await cookies()
+
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll()
@@ -20,12 +23,12 @@ export async function createClient() {
       setAll(cookiesToSet) {
         try {
           cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
-        } catch {
-          // ignorar erros de set cookie em server components
+        } catch (error) {
+          console.log("[v0] setAll error (safe to ignore in Server Components):", error)
         }
       },
     },
   })
 }
 
-export const createServerClient = createClient
+export { createClient as createServerClient }
