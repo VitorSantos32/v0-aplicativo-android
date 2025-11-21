@@ -1,6 +1,9 @@
 "use client"
 import { useChat } from "@ai-sdk/react"
-import { useRef, useEffect } from "react"
+import { DefaultChatTransport } from "ai"
+import type React from "react"
+
+import { useRef, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -12,9 +15,10 @@ interface AiChatProps {
 
 export function AiChat({ onClose }: AiChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [inputValue, setInputValue] = useState("")
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, setInput } = useChat({
-    api: "/api/ai-coach/chat",
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({ api: "/api/ai-coach/chat" }),
   })
 
   const scrollToBottom = () => {
@@ -25,17 +29,19 @@ export function AiChat({ onClose }: AiChatProps) {
     scrollToBottom()
   }, [messages])
 
-  const handleSuggestion = async (suggestion: string) => {
-    setInput(suggestion)
-
-    // Aguarda um frame para garantir que o input foi atualizado
-    requestAnimationFrame(() => {
-      const form = document.querySelector("form")
-      if (form) {
-        form.requestSubmit()
-      }
-    })
+  const handleSuggestion = (suggestion: string) => {
+    sendMessage({ text: suggestion })
   }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (inputValue.trim()) {
+      sendMessage({ text: inputValue })
+      setInputValue("")
+    }
+  }
+
+  const isLoading = status === "in_progress"
 
   return (
     <div className="flex flex-col h-full bg-black">
@@ -75,29 +81,36 @@ export function AiChat({ onClose }: AiChatProps) {
           </div>
         ) : (
           <>
-            {messages.map((message) => (
-              <div key={message.id} className={`flex gap-3 ${message.role === "user" ? "justify-end" : ""}`}>
-                {message.role === "assistant" && (
-                  <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
-                    <Bot className="w-5 h-5 text-white" />
-                  </div>
-                )}
-                <Card
-                  className={`max-w-[80%] ${
-                    message.role === "user" ? "bg-orange-500 border-orange-500" : "bg-zinc-900 border-zinc-800"
-                  }`}
-                >
-                  <CardContent className="p-3">
-                    <div className="text-white text-sm whitespace-pre-wrap">{message.content}</div>
-                  </CardContent>
-                </Card>
-                {message.role === "user" && (
-                  <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center shrink-0">
-                    <User className="w-5 h-5 text-white" />
-                  </div>
-                )}
-              </div>
-            ))}
+            {messages.map((message) => {
+              const content = message.parts
+                .filter((part: any) => part.type === "text")
+                .map((part: any) => part.text)
+                .join("")
+
+              return (
+                <div key={message.id} className={`flex gap-3 ${message.role === "user" ? "justify-end" : ""}`}>
+                  {message.role === "assistant" && (
+                    <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
+                      <Bot className="w-5 h-5 text-white" />
+                    </div>
+                  )}
+                  <Card
+                    className={`max-w-[80%] ${
+                      message.role === "user" ? "bg-orange-500 border-orange-500" : "bg-zinc-900 border-zinc-800"
+                    }`}
+                  >
+                    <CardContent className="p-3">
+                      <div className="text-white text-sm whitespace-pre-wrap">{content}</div>
+                    </CardContent>
+                  </Card>
+                  {message.role === "user" && (
+                    <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center shrink-0">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
             {isLoading && (
               <div className="flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
@@ -118,15 +131,15 @@ export function AiChat({ onClose }: AiChatProps) {
       <div className="p-4 border-t border-zinc-800">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
-            value={input}
-            onChange={handleInputChange}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
             placeholder="Digite sua pergunta..."
             disabled={isLoading}
             className="flex-1 bg-zinc-900 border-zinc-700 text-white placeholder:text-gray-500"
           />
           <Button
             type="submit"
-            disabled={!input || input.trim() === "" || isLoading}
+            disabled={isLoading || !inputValue.trim()}
             className="bg-orange-500 hover:bg-orange-600 shrink-0"
           >
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

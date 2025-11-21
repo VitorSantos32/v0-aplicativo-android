@@ -1,19 +1,20 @@
-import { streamText } from "ai"
+import { streamText, convertToModelMessages } from "ai"
+import { createGroq } from "@ai-sdk/groq"
 
 export const maxDuration = 30
+
+const groq = createGroq({
+  apiKey: process.env.GROQ_API_KEY,
+})
 
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json()
 
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return new Response("Mensagens inválidas", { status: 400 })
-    }
-
-    console.log("[v0] Recebendo mensagens:", messages.length)
+    const modelMessages = convertToModelMessages(messages)
 
     const result = streamText({
-      model: "openai/gpt-4o-mini",
+      model: groq("llama-3.3-70b-versatile"),
       system: `Você é um Personal Trainer experiente e especialista da Academia Mais Vida, com anos de experiência em musculação, CrossFit e fitness.
 
 SEU PAPEL:
@@ -42,12 +43,15 @@ IMPORTANTE:
 - Foque apenas em dúvidas relacionadas a academia, treino e exercícios físicos
 - Se perguntarem sobre nutrição detalhada, recomende o Calculador Nutricional do app
 - Não dê diagnósticos médicos, sempre recomende consultar profissionais de saúde quando apropriado`,
-      messages,
+      messages: modelMessages,
     })
 
     return result.toUIMessageStreamResponse()
   } catch (error) {
-    console.error("[v0] Erro no chat IA:", error)
-    return new Response("Erro ao processar mensagem", { status: 500 })
+    console.error("[v0] Error in chat API:", error)
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    })
   }
 }
