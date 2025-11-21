@@ -11,17 +11,23 @@ export default async function PlansPage() {
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser()
 
-  if (!user) {
+  if (userError || !user) {
+    console.error("[Production Error] Failed to get user in PlansPage:", userError)
     redirect("/auth/login")
   }
 
-  const { data: subscriptions } = await supabase
+  const { data: subscriptions, error: subscriptionsError } = await supabase
     .from("subscriptions")
     .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
+
+  if (subscriptionsError) {
+    console.error("[Production Error] Failed to fetch subscriptions:", subscriptionsError)
+  }
 
   const plans = [
     {

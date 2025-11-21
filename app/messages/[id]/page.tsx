@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { ChatInterface } from "@/components/chat-interface"
 import { ArrowLeft } from "lucide-react"
@@ -7,21 +7,28 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DeleteConversationButton } from "@/components/delete-conversation-button"
 
 export default async function ConversationPage({ params }: { params: { id: string } }) {
-  const supabase = await createServerClient()
+  const supabase = await createClient()
+
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser()
 
-  if (!user) {
+  if (userError || !user) {
+    console.error("[Production Error] Failed to get user:", userError)
     redirect("/auth/login")
   }
 
   const conversationId = params.id
 
-  // Buscar a conversa
-  const { data: conversation } = await supabase.from("conversations").select("*").eq("id", conversationId).single()
+  const { data: conversation, error: convError } = await supabase
+    .from("conversations")
+    .select("*")
+    .eq("id", conversationId)
+    .single()
 
-  if (!conversation) {
+  if (convError || !conversation) {
+    console.error("[Production Error] Failed to fetch conversation:", convError)
     redirect("/messages")
   }
 
@@ -32,18 +39,26 @@ export default async function ConversationPage({ params }: { params: { id: strin
 
   // Buscar o perfil do outro usuário
   const otherUserId = conversation.user1_id === user.id ? conversation.user2_id : conversation.user1_id
-  const { data: otherUserProfile } = await supabase
+  const { data: otherUserProfile, error: profileError } = await supabase
     .from("profiles")
     .select("id, display_name, avatar_url")
     .eq("id", otherUserId)
     .single()
 
+  if (profileError) {
+    console.error("[Production Error] Failed to fetch profile:", profileError)
+  }
+
   // Buscar mensagens
-  const { data: messages } = await supabase
+  const { data: messages, error: messagesError } = await supabase
     .from("messages")
     .select("*")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true })
+
+  if (messagesError) {
+    console.error("[Production Error] Failed to fetch messages:", messagesError)
+  }
 
   // Marcar mensagens como lidas
   await supabase

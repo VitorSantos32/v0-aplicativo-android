@@ -19,12 +19,17 @@ export function ChatInterface({ conversationId, currentUserId, initialMessages }
   const [messages, setMessages] = useState(initialMessages)
   const [newMessage, setNewMessage] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "connected" | "error">("connecting")
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const supabase = createClient()
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
 
   useEffect(() => {
-    console.log("[v0] Mensagens iniciais carregadas:", initialMessages.length)
-    console.log("[v0] Conversation ID:", conversationId)
+    try {
+      supabaseRef.current = createClient()
+    } catch (error) {
+      console.error("[Production Error] Failed to create Supabase client:", error)
+      setRealtimeStatus("error")
+    }
   }, [])
 
   const scrollToBottom = () => {
@@ -36,8 +41,9 @@ export function ChatInterface({ conversationId, currentUserId, initialMessages }
   }, [messages])
 
   useEffect(() => {
-    // Subscrever a novas mensagens em tempo real
-    const channel = supabase
+    if (!supabaseRef.current) return
+
+    const channel = supabaseRef.current
       .channel(`conversation:${conversationId}`)
       .on(
         "postgres_changes",
@@ -48,29 +54,36 @@ export function ChatInterface({ conversationId, currentUserId, initialMessages }
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          console.log("[v0] Nova mensagem recebida via realtime:", payload.new)
-          setMessages((prev) => [...prev, payload.new])
+          setMessages((prev) => {
+            const exists = prev.find((m) => m.id === payload.new.id)
+            if (exists) return prev
+            return [...prev, payload.new]
+          })
         },
       )
-      .subscribe()
-
-    console.log("[v0] Subscrito ao canal de realtime:", `conversation:${conversationId}`)
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          setRealtimeStatus("connected")
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setRealtimeStatus("error")
+        }
+      })
 
     return () => {
-      supabase.removeChannel(channel)
+      if (supabaseRef.current) {
+        supabaseRef.current.removeChannel(channel)
+      }
     }
-  }, [conversationId, supabase])
+  }, [conversationId])
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim() || isSubmitting) return
+    if (!newMessage.trim() || isSubmitting || !supabaseRef.current) return
 
     setIsSubmitting(true)
 
     try {
-      console.log("[v0] Enviando mensagem:", newMessage.trim())
-
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRef.current
         .from("messages")
         .insert({
           conversation_id: conversationId,
@@ -78,20 +91,31 @@ export function ChatInterface({ conversationId, currentUserId, initialMessages }
           content: newMessage.trim(),
         })
         .select()
+        .single()
 
-      console.log("[v0] Resposta do insert:", { data, error })
+      if (error) {
+        console.error("[Production Error] Failed to send message:", error)
+        alert("Erro ao enviar mensagem. Verifique sua conexão.")
+        return
+      }
 
-      if (!error && data) {
+      if (data) {
         setNewMessage("")
-        setMessages((prev) => [...prev, data[0]])
+        setMessages((prev) => {
+          const exists = prev.find((m) => m.id === data.id)
+          if (exists) return prev
+          return [...prev, data]
+        })
 
         // Atualizar o timestamp da conversa
-        await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId)
-      } else {
-        console.error("[v0] Erro ao enviar mensagem:", error)
+        await supabaseRef.current
+          .from("conversations")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", conversationId)
       }
     } catch (error) {
-      console.error("[v0] Erro ao enviar mensagem:", error)
+      console.error("[Production Error] Exception sending message:", error)
+      alert("Erro ao enviar mensagem. Tente novamente.")
     } finally {
       setIsSubmitting(false)
     }
@@ -99,6 +123,12 @@ export function ChatInterface({ conversationId, currentUserId, initialMessages }
 
   return (
     <div className="flex flex-col h-full">
+      {realtimeStatus === "error" && (
+        <div className="bg-red-500/10 text-red-400 text-xs p-2 text-center">
+          Conexão em tempo real indisponível. Recarregue a página para ver novas mensagens.
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.length === 0 ? (

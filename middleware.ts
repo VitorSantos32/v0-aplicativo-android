@@ -1,10 +1,16 @@
-// import { updateSession } from "@/lib/supabase/middleware"
+import { updateSession } from "@/lib/supabase/middleware"
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
 export async function middleware(request: NextRequest) {
-  // Temporariamente desabilitado para evitar erros de importação do Supabase
-  return NextResponse.next()
+  try {
+    return await updateSession(request)
+  } catch (error) {
+    console.error("[v0] Middleware error:", error)
+    return NextResponse.next({
+      request,
+    })
+  }
 }
 
 export const config = {

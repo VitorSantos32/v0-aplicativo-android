@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { TopBar } from "@/components/top-bar"
 import { BottomNav } from "@/components/bottom-nav"
@@ -6,17 +6,19 @@ import { ConversationsList } from "@/components/conversations-list"
 import { SearchUsers } from "@/components/search-users"
 
 export default async function MessagesPage() {
-  const supabase = await createServerClient()
+  const supabase = await createClient()
+
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser()
 
-  if (!user) {
+  if (userError || !user) {
+    console.error("[Production Error] Failed to get user in MessagesPage:", userError)
     redirect("/auth/login")
   }
 
-  // Buscar conversas do usuário
-  const { data: conversations } = await supabase
+  const { data: conversations, error: conversationsError } = await supabase
     .from("conversations")
     .select(`
       id,
@@ -33,13 +35,25 @@ export default async function MessagesPage() {
     .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
     .order("updated_at", { ascending: false })
 
-  // Buscar perfis dos outros usuários
+  if (conversationsError) {
+    console.error("[Production Error] Failed to fetch conversations:", conversationsError)
+  }
+
   const otherUserIds = conversations?.map((conv) => (conv.user1_id === user.id ? conv.user2_id : conv.user1_id)) || []
 
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, display_name, avatar_url")
-    .in("id", otherUserIds)
+  let profiles: any[] = []
+  if (otherUserIds.length > 0) {
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .in("id", otherUserIds)
+
+    if (profilesError) {
+      console.error("[Production Error] Failed to fetch profiles:", profilesError)
+    } else {
+      profiles = profilesData || []
+    }
+  }
 
   const conversationsWithProfiles = conversations?.map((conv) => {
     const otherUserId = conv.user1_id === user.id ? conv.user2_id : conv.user1_id

@@ -4,12 +4,12 @@ import { cookies } from "next/headers"
 export async function createClient() {
   const cookieStore = await cookies()
 
-  const supabaseUrl = process.env.SUPABASE_URL || ""
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || ""
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("[v0] Missing Supabase server environment variables")
-    throw new Error("Missing Supabase environment variables")
+    console.error("[Production Error] Missing Supabase environment variables")
+    throw new Error("Missing Supabase configuration. Please check environment variables in Vercel.")
   }
 
   return createSupabaseServerClient(supabaseUrl, supabaseAnonKey, {
@@ -21,7 +21,7 @@ export async function createClient() {
         try {
           cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
         } catch {
-          // ignorar erros de set cookie em server components
+          // Ignore errors in middleware context
         }
       },
     },
