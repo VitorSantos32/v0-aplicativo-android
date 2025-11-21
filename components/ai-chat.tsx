@@ -1,10 +1,6 @@
 "use client"
-
-import type React from "react"
-
-import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport } from "ai"
-import { useState, useRef, useEffect } from "react"
+import { useChat } from "ai/react"
+import { useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -15,13 +11,10 @@ interface AiChatProps {
 }
 
 export function AiChat({ onClose }: AiChatProps) {
-  const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/ai-coach/chat",
-    }),
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    api: "/api/ai-coach/chat",
   })
 
   const scrollToBottom = () => {
@@ -32,12 +25,18 @@ export function AiChat({ onClose }: AiChatProps) {
     scrollToBottom()
   }, [messages])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || status === "in_progress") return
-
-    sendMessage({ text: input })
-    setInput("")
+  const handleSuggestion = (suggestion: string) => {
+    const syntheticEvent = {
+      preventDefault: () => {},
+      target: { value: suggestion },
+    } as any
+    handleInputChange(syntheticEvent)
+    setTimeout(() => {
+      const form = document.querySelector("form")
+      if (form) {
+        form.requestSubmit()
+      }
+    }, 100)
   }
 
   return (
@@ -48,37 +47,31 @@ export function AiChat({ onClose }: AiChatProps) {
             <div className="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center mb-4">
               <Bot className="w-8 h-8 text-orange-500" />
             </div>
-            <h3 className="text-white font-bold text-lg mb-2">Como posso te ajudar?</h3>
+            <h3 className="text-white font-bold text-lg mb-2">Personal Trainer IA</h3>
             <p className="text-gray-400 text-sm mb-6">
-              Pergunte sobre treinos, exercícios, técnicas ou tire dúvidas sobre sua rotina
+              Tire suas dúvidas sobre treinos, exercícios, técnicas e muito mais! Estou aqui para te ajudar 24/7.
             </p>
             <div className="grid grid-cols-1 gap-2 w-full max-w-sm">
               <Button
                 variant="outline"
                 className="bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 text-left justify-start"
-                onClick={() => {
-                  setInput("Como fazer agachamento correto?")
-                }}
+                onClick={() => handleSuggestion("Como fazer agachamento livre corretamente?")}
               >
-                Como fazer agachamento correto?
+                Como fazer agachamento livre corretamente?
               </Button>
               <Button
                 variant="outline"
                 className="bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 text-left justify-start"
-                onClick={() => {
-                  setInput("Preciso de motivação para treinar hoje")
-                }}
+                onClick={() => handleSuggestion("Monte um treino ABC de hipertrofia")}
               >
-                Preciso de motivação para treinar hoje
+                Monte um treino ABC de hipertrofia
               </Button>
               <Button
                 variant="outline"
                 className="bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 text-left justify-start"
-                onClick={() => {
-                  setInput("Monte um treino de peito e tríceps")
-                }}
+                onClick={() => handleSuggestion("Qual a diferença entre supino reto e inclinado?")}
               >
-                Monte um treino de peito e tríceps
+                Qual a diferença entre supino reto e inclinado?
               </Button>
             </div>
           </div>
@@ -97,14 +90,7 @@ export function AiChat({ onClose }: AiChatProps) {
                   }`}
                 >
                   <CardContent className="p-3">
-                    <div className="text-white text-sm whitespace-pre-wrap">
-                      {message.parts.map((part, index) => {
-                        if (part.type === "text") {
-                          return <span key={index}>{part.text}</span>
-                        }
-                        return null
-                      })}
-                    </div>
+                    <div className="text-white text-sm whitespace-pre-wrap">{message.content}</div>
                   </CardContent>
                 </Card>
                 {message.role === "user" && (
@@ -114,7 +100,7 @@ export function AiChat({ onClose }: AiChatProps) {
                 )}
               </div>
             ))}
-            {status === "in_progress" && (
+            {isLoading && (
               <div className="flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
                   <Bot className="w-5 h-5 text-white" />
@@ -135,17 +121,17 @@ export function AiChat({ onClose }: AiChatProps) {
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleInputChange}
             placeholder="Digite sua pergunta..."
-            disabled={status === "in_progress"}
+            disabled={isLoading}
             className="flex-1 bg-zinc-900 border-zinc-700 text-white placeholder:text-gray-500"
           />
           <Button
             type="submit"
-            disabled={!input.trim() || status === "in_progress"}
+            disabled={!input.trim() || isLoading}
             className="bg-orange-500 hover:bg-orange-600 shrink-0"
           >
-            {status === "in_progress" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </form>
       </div>
