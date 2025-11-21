@@ -29,39 +29,30 @@ export function PlanCard({ plan, userId }: PlanCardProps) {
   const Icon = plan.icon
 
   const handleSubscribe = async () => {
-    setSubscribing(true)
-
     try {
+      setSubscribing(true)
       const supabase = createClient()
 
       const startDate = new Date()
       const endDate = new Date()
       endDate.setMonth(endDate.getMonth() + 1) // 1 month subscription
 
-      const { data, error } = await supabase
-        .from("subscriptions")
-        .insert({
-          user_id: userId,
-          plan_type: plan.id,
-          status: "active",
-          start_date: startDate.toISOString().split("T")[0],
-          end_date: endDate.toISOString().split("T")[0],
-          price: plan.price,
-        })
-        .select()
+      const { error } = await supabase.from("subscriptions").insert({
+        user_id: userId,
+        plan_type: plan.id,
+        status: "active",
+        start_date: startDate.toISOString().split("T")[0],
+        end_date: endDate.toISOString().split("T")[0],
+        price: plan.price,
+      })
 
-      if (error) {
-        console.error("[v0] Error subscribing to plan:", error)
-        throw error
-      }
+      if (error) throw error
 
-      if (data) {
-        alert("Plano contratado com sucesso!")
-        router.refresh()
-      }
-    } catch (error: any) {
-      console.error("[v0] Error subscribing:", error)
-      alert(error?.message || "Erro ao contratar plano. Tente novamente.")
+      alert("Plano contratado com sucesso!")
+      router.refresh()
+    } catch (error) {
+      console.error("Error subscribing:", error)
+      alert("Erro ao contratar plano. Tente novamente.")
     } finally {
       setSubscribing(false)
     }

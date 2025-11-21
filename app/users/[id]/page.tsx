@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { createServerClient } from "@/lib/supabase/server"
 import { TopBar } from "@/components/top-bar"
 import { BottomNav } from "@/components/bottom-nav"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
+import { MessageButton } from "@/components/message-button"
 
 export default async function UserProfilePage({ params }: { params: { id: string } }) {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -46,6 +47,8 @@ export default async function UserProfilePage({ params }: { params: { id: string
               <h2 className="text-2xl font-bold text-white mb-1">{profile.display_name || "Usuário"}</h2>
               {profile.bio && <p className="text-gray-400 text-sm">{profile.bio}</p>}
             </div>
+
+            {!isOwnProfile && <MessageButton otherUserId={params.id} currentUserId={user.id} />}
           </div>
 
           <div className="border-t border-zinc-800 pt-4">
