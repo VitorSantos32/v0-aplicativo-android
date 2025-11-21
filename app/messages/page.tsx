@@ -10,15 +10,13 @@ export default async function MessagesPage() {
 
   const {
     data: { user },
-    error: userError,
   } = await supabase.auth.getUser()
 
-  if (userError || !user) {
-    console.error("[Production Error] Failed to get user in MessagesPage:", userError)
+  if (!user) {
     redirect("/auth/login")
   }
 
-  const { data: conversations, error: conversationsError } = await supabase
+  const { data: conversations } = await supabase
     .from("conversations")
     .select(`
       id,
@@ -35,24 +33,16 @@ export default async function MessagesPage() {
     .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
     .order("updated_at", { ascending: false })
 
-  if (conversationsError) {
-    console.error("[Production Error] Failed to fetch conversations:", conversationsError)
-  }
-
   const otherUserIds = conversations?.map((conv) => (conv.user1_id === user.id ? conv.user2_id : conv.user1_id)) || []
 
   let profiles: any[] = []
   if (otherUserIds.length > 0) {
-    const { data: profilesData, error: profilesError } = await supabase
+    const { data: profilesData } = await supabase
       .from("profiles")
       .select("id, display_name, avatar_url")
       .in("id", otherUserIds)
 
-    if (profilesError) {
-      console.error("[Production Error] Failed to fetch profiles:", profilesError)
-    } else {
-      profiles = profilesData || []
-    }
+    profiles = profilesData || []
   }
 
   const conversationsWithProfiles = conversations?.map((conv) => {
