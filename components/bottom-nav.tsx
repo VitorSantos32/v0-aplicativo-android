@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, PlusSquare, MessageSquare, User, Search } from "lucide-react"
+import { Home, PlusSquare, Dumbbell, User, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function BottomNav() {
@@ -12,7 +12,7 @@ export function BottomNav() {
     { href: "/feed", icon: Home, label: "Feed" },
     { href: "/create", icon: PlusSquare, label: "Postar" },
     { href: "/search", icon: Search, label: "Pesquisar" },
-    { href: "/ai-coach", icon: MessageSquare, label: "IA Coach" },
+    { href: "/plans", icon: Dumbbell, label: "Planos" },
     { href: "/profile", icon: User, label: "Perfil" },
   ]
 

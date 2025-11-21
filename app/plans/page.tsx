@@ -7,21 +7,58 @@ import { ActiveSubscriptions } from "@/components/active-subscriptions"
 import { Dumbbell, Flame, User, Package } from "lucide-react"
 
 export default async function PlansPage() {
-  const supabase = await createClient()
+  console.log("[v0] PlansPage - Starting page load")
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let supabase
+  try {
+    supabase = await createClient()
+    console.log("[v0] PlansPage - Supabase client created successfully")
+  } catch (error) {
+    console.error("[v0] PlansPage - Error creating Supabase client:", error)
+    throw error
+  }
 
-  if (!user) {
+  let user
+  try {
+    const {
+      data: { user: userData },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError) {
+      console.error("[v0] PlansPage - Error getting user:", userError)
+      throw userError
+    }
+
+    if (!userData) {
+      console.log("[v0] PlansPage - No user found, redirecting to login")
+      redirect("/auth/login")
+    }
+
+    user = userData
+    console.log("[v0] PlansPage - User authenticated:", user.id)
+  } catch (error) {
+    console.error("[v0] PlansPage - Auth error:", error)
     redirect("/auth/login")
   }
 
-  const { data: subscriptions } = await supabase
-    .from("subscriptions")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
+  let subscriptions = []
+  try {
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("[v0] PlansPage - Error fetching subscriptions:", error)
+    } else {
+      subscriptions = data || []
+      console.log("[v0] PlansPage - Subscriptions loaded:", subscriptions.length)
+    }
+  } catch (error) {
+    console.error("[v0] PlansPage - Exception fetching subscriptions:", error)
+  }
 
   const plans = [
     {
@@ -59,6 +96,8 @@ export default async function PlansPage() {
     },
   ]
 
+  console.log("[v0] PlansPage - Rendering page")
+
   return (
     <div className="min-h-screen bg-black pb-20">
       <TopBar title="Planos" showNotifications={false} />
@@ -85,12 +124,11 @@ export default async function PlansPage() {
         </div>
 
         <div className="mt-8 p-4 bg-zinc-900 rounded-lg border border-zinc-800">
-          <h3 className="text-orange-500 font-semibold mb-2">Combos Disponíveis</h3>
+          <h3 className="text-orange-500 font-semibold mb-2">💡 Dica de Economia</h3>
           <ul className="text-gray-300 text-sm space-y-1">
-            <li>• Academia + CF75: R$ 219,90</li>
-            <li>• Academia + Personal: R$ 349,90</li>
-            <li>• CF75 + Personal: R$ 399,90</li>
-            <li>• Combo Completo: R$ 449,90 (Melhor oferta!)</li>
+            <li>• O Combo Completo oferece o melhor custo-benefício</li>
+            <li>• Economize contratando planos combinados</li>
+            <li>• Todos os planos têm renovação mensal automática</li>
           </ul>
         </div>
       </main>
